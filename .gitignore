@@ -1,0 +1,27 @@
+# General (Mac OS)
+.DS_Store
+**/.DS_Store
+
+# Editor
+.idea/
+out/
+.idea_modules/
+.vscode/
+target/
+
+# Virtual Environment
+venv/
+env/
+.venv/
+.env/
+
+# Pytest Cache
+.pytest_cache/
+
+# pyc files
+**/*.pyc
+__pycache__/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
