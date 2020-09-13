@@ -33,3 +33,9 @@ pip-delete-this-directory.txt
 *.log
 *.pdf
 *.synctex*
+
+# Visual studio build/aux files
+.vs
+bin
+obj
+*.suo
