@@ -2,10 +2,12 @@ from typing import List
 from bitarray import bitarray
 
 
-def string_to_bits(string: str) -> List[bool]:
+# modified return to return bitarray as is
+def string_to_bits(string: str) -> bitarray:
     bits = bitarray()
     bits.frombytes(string.encode('utf-8'))
-    return bits.tolist()
+    
+    return bits
 
 
 def bits_to_string(bits: List[bool]) -> str:
@@ -14,11 +16,14 @@ def bits_to_string(bits: List[bool]) -> str:
 
 def xor_encrypt_decrypt(message: str, key: str) -> str:
     """
-
-    :param message:
-    :param key:
-    :return:
+    :param  message: plaintext
+    :param  key    : key
+    :return str    : encrypted cipher with key
     """
+    pad_times  = int(len(message) / len(key)) + 1 
+    padded_key = (key * pad_times)[:len(message)]
+
     message_bits = string_to_bits(message)
-    key_bits = string_to_bits(key)
-    pass
+    key_bits     = string_to_bits(padded_key)
+    
+    return bits_to_string(message_bits ^ key_bits)
