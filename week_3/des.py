@@ -131,6 +131,23 @@ sbox = [
 #
 ###############################################################
 
+def ip_pass(subject: bitarray):
+    result_bits = bitarray()
+
+    for i in range (0, 64):
+        result_bits.append(subject[ip[i] -1])
+
+    return result_bits
+
+
+def ip_1_pass(subject: bitarray):
+    result_bits = bitarray()
+
+    for i in range (0, 64):
+        result_bits.append(subject[ip_1[i]-1])
+    
+    return result_bits
+
 def sbox_pass(expanded: bitarray):
     sbox_product = bitarray()
 
@@ -160,7 +177,7 @@ def expand(message: bitarray) -> bitarray:
 
 def feistel(message: bitarray, key: bitarray) -> bitarray:
     # Initial permutation (IP)
-    subject = message
+    subject = ip_pass(message)
 
     # divide
     left  = subject[0:32]
@@ -185,8 +202,7 @@ def feistel(message: bitarray, key: bitarray) -> bitarray:
         right = temp
 
     # Initial reverse permutation (IP-1)
-
-    return left + right
+    return ip_1_pass(left + right)
 
 ##############################################################
 #
@@ -288,7 +304,6 @@ def encrypt_des(message: str, key: str, mode: int, iv=None) -> (bytes, bytes):
     block_count, bits, key_bits = generate_blocks_str(message, key)
     result_bits  = bitarray()
     next_input   = generate_iv_bits(iv)
-    padded_bytes = 0
 
     # ofb
     for i in range(0, block_count):
@@ -331,21 +346,4 @@ def decrypt_des(encrypted: bytes, key: str, mode: int, iv: bytes) -> str:
         next_input   = feistel(next_input, key_bits)
         result_bits += next_input ^ block
 
-    # strip padding
-    decrypted_bytes = result_bits.tobytes()
-    padded_bytes    = decrypted_bytes[len(decrypted_bytes) - 1]
-    
-
     return result_bits.tobytes().decode('utf-8')
-
-
-message = 'Hello Security abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890'
-key = '12345678'
-iv = b'\x00\x00\x00\x00\x00\x00\x00\x01'
-#iv = b'\xc1\x8eb*\xaf.;\xee'
-#enc = b"Ad7\x921\xfbF:\xc1\x04\xd2\x19/\x1d\x0eB\xf4\xab\xddG7\xa2'\xa6\xdc\xc7\x8a\xd0\x82\xc9-\xb9\xf6YFp\x0f\x0b:i\x1e\xae\x08\nw\xa0\x11X\xe7ked\x19\xe0\x14\xf1\nkk?4\x9a\x807\x7f\xb9/\x9e\x1b\xdc\xfc\x88\xbe\x04\x04\xc3\x0bEz"
-print(encrypt_des(message, key, 0, iv))
-
-
-enc = b'\x13\x9a\x996ot\x93\xfa\xbe\xa9\xf5?v<T\xe8\xf9\xd9!;\x06v\xb8\xdaw\x95%\x8d\xa8Lb\xee\xeb\xaa+\t\xf0\x11\xfax\x05\xba\xdc\x1e\x03QE\xe9\xfc\xf6\xf2\x9c)OQWt\x98\xe2\xb8\x13cYUN\x90\xc8\x94 \x14\xf0\x86\xed\x8f\xe1\xcf\xd8,\x18\x0f'
-print(decrypt_des(enc, key, 0, iv))
