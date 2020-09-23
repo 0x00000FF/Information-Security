@@ -5,27 +5,26 @@ import time
 
 def send(sock, send_data):
     """
-    함수설명:
+    send data via given connected socket
 
-    :param sock:
-    :param send_data:
-    :return:
+    :param sock: destination socket for sending data
+    :param send_data: data to send
+    :return: nothing
     """
     sock.send(send_data)
 
 
 def receive(sock, addr, dst):
     """
-    함수설명:
+    receive data via given connected socket.
 
-    :param sock:
-    :param addr:
-    :param dst:
+    :param sock: source socket for receiving data
+    :param addr: destination address
+    :param dst:  destination socket for sending data
     :return:
     """
     while True:
         recv_data = sock.recv(1024)
-        print(f'{addr} :', recv_data.decode('utf-8'))
         send(dst, recv_data)
 
 

@@ -2,57 +2,69 @@ from socket import *
 import threading
 import time
 from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
 
 
-def pad(s: str or bytes):
+def pad(s: str or bytes) -> bytes:
     """
+    pad given data to encrypt with block cipher algorithm
 
-    :param s:
-    :return:
+    :param s: bytes to be padded
+    :return:  padded bytes
     """
     return (16 - len(s) % 16) * chr(16 - len(s) % 16)
 
 
-def unpad(s: bytes):
+def unpad(s: bytes) -> bytes:
     """
+    unpad given data to retrieve original message
 
-    :param s:
-    :return:
+    :param s: bytes to be unpadded
+    :return:  unpadded bytes
     """
     return s[0:-s[-1]]
 
 
 def encrypt(data: str, key: bytes) -> bytes:
     """
+    Encrypt given data in AES with given key.
 
-    :param data:
-    :param key:
-    :return:
+    :param data: a plaintext
+    :param key:  key for AES cryptography
+    :return:     ciphertext
     """
-    #  TODO: 구현할 부분 (data.encode('utf-8') 도 변경해도 됨)
 
-    return data.encode('utf-8')
+    iv      = get_random_bytes(16)
+    message = data.encode('utf-8')
+    cipher  = AES.new(key, AES.MODE_CBC, iv=iv)
+
+    cipher_text = cipher.encrypt(message + pad(message).encode())
+    
+    return iv + cipher_text
 
 
 def decrypt(data: bytes, key: bytes) -> str:
     """
+    Decrypt given cipher text(data) in AES with given key
 
-    :param data:
-    :param key:
-    :return:
+    :param data: a ciphertext
+    :param key:  key for AES Cryptography
+    :return:     decrypted plaintext
     """
-    #  TODO: 구현할 부분 (data.decode('utf-8') 도 변경해도 됨)
+    iv          = data[0:16]
+    cipher_text = data[16:]
+    cipher      = AES.new(key, AES.MODE_CBC, iv=iv)
 
-    return data.decode('utf-8')
+    return unpad(cipher.decrypt(cipher_text)).decode('utf-8')
 
 
 def send(sock, key):
     """
-    함수설명:
+    Send an user message as encrypted state
 
-    :param sock:
-    :param key:
-    :return:
+    :param sock: connected socket with server
+    :param key:  key for AES Cryptography
+    :return:     nothing
     """
     while True:
         send_data = input('>>>')
@@ -61,11 +73,11 @@ def send(sock, key):
 
 def receive(sock, key):
     """
-    함수설명:
+    Receive a message from server and decrypt
 
-    :param sock:
-    :param key:
-    :return:
+    :param sock: connected socket with server
+    :param key:  key for AES Cryptography
+    :return:     nothing
     """
     while True:
         recv_data = sock.recv(1024)
