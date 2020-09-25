@@ -1,4 +1,4 @@
-# 2020 Information Security
+# 2020 Information Security ![Information Security CI](https://github.com/0x00000FF/Information-Security/workflows/Information%20Security%20CI/badge.svg)
 
 ## 1주차
 > github repository 설정
