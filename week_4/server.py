@@ -25,6 +25,7 @@ def receive(sock, addr, dst):
     """
     while True:
         recv_data = sock.recv(1024)
+        print(f'{addr} :', recv_data)
         send(dst, recv_data)
 
 
