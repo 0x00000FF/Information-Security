@@ -46,27 +46,31 @@ def inverse(a: int, mod: int) -> int:
     """
     modular inverse 값
     inverse를 계산할 수 없는 경우 (gcd 값이 1이 아닌 경우) Value Error를 raise 해야 함
-    :param a:
-    :param mod:
-    :return:
+    :param a: known coefficient
+    :param mod: modulo operand
+    :return: modulo inverse of a
     """
 
+    # mod must be positive integer
+    if mod <= 0:
+        raise ValueError("mod is not valid")
+
     if gcd(a, mod) != 1:
-        raise ValueError("a and mod should be coprimes")
+        raise ValueError("a and mod must be coprimes")
 
     # from ax (equiv) 1 mod M
     # then we can transform this equation as
     # ax = My + 1
     # ax - My = 1
-    # ax + My = 1 (y can be negative integer)
+    # ax + My = 1 (y can be a negative integer)
     # apply extended euclidean algorithm on the equation above
     # then x should be modulo inverse of a (a^-1)
     x, _ = extended_euclidean(a, mod)
 
-    # do modulo if x is neg
-    if x < 0:
-        x = x % mod
-
+    # from pycryptodome, Crypto.Math.Integer.inplace_inverse, Ln 319
+    while x < 0:
+        x += mod
+    
     return x
 
 
@@ -96,9 +100,9 @@ class RSAKey:
         :return: calculated private key
         """
 
-        # ed (equiv) 1 mod N
+        # ed (equiv) 1 mod fi(N)
         # then modulo inverse of e should be d
-        return inverse(self.e, self.n)
+        return inverse(self.e, (self.p - 1) * (self.q - 1))
 
     def set_e(self, e: int):
         """
