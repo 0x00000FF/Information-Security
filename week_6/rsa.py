@@ -70,8 +70,10 @@ def inverse(a: int, mod: int) -> int:
     # from pycryptodome, Crypto.Math.Integer.inplace_inverse, Ln 319
     while x < 0:
         x += mod
-    
-    return x
+
+    # these two cases can occur test failure
+    # return x
+    return x % mod
 
 
 class RSAKey:
