@@ -104,7 +104,7 @@ class RSAKey:
 
         # ed (equiv) 1 mod fi(N)
         # then modulo inverse of e should be d
-        return inverse(self.e, (self.p - 1) * (self.q - 1))
+        return inverse(self.e, lcm(self.p - 1, self.q - 1))
 
     def set_e(self, e: int):
         """
