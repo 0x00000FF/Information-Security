@@ -41,7 +41,7 @@ def receive(sock, key):
         print('상대방 :', decrypt(recv_data, key))
 
 
-def login():
+def login(sock: "Socket"):
     """
     TODO: 아이디와 패스워드 값을 전송하는 함수
     :return:
@@ -49,6 +49,7 @@ def login():
     user_id = input()
     password = input()
     # socket 통신으로 id와 password를 전송
+
     pass
 
 
@@ -94,7 +95,7 @@ def connect_socket():
     client_socket.connect(('127.0.0.1', port))
     print('접속 완료')
 
-    login()
+    login(client_socket)
     print('로그인 완료')
 
     my_secret_key = generate_key()
