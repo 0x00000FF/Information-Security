@@ -4,9 +4,11 @@ import time
 from Crypto.Cipher import AES
 import random
 
+from hashlib import sha256
 
-def pad(s: str):
-    return s + (16 - len(s) % 16) * chr(16 - len(s) % 16)
+
+def pad(s: bytes):
+    return s + ((16 - len(s) % 16) * chr(16 - len(s) % 16)).encode()
 
 
 def unpad(s: bytes):
@@ -14,12 +16,11 @@ def unpad(s: bytes):
 
 
 def encrypt(data: str, key: bytes) -> bytes:
-    data = pad(data).encode('utf-8')
+    data = pad(data.encode('utf-8'))
     aes = AES.new(key, AES.MODE_CBC)
     iv = aes.iv
     enc = aes.encrypt(data)
     return iv + enc
-
 
 def decrypt(data: bytes, key: bytes) -> str:
     iv = data[:16]
@@ -29,27 +30,42 @@ def decrypt(data: bytes, key: bytes) -> str:
     return unpad(dec).decode('utf-8')
 
 
-def send(sock, key):
+def send(sock, key:int):
+    encrypt_key = int.to_bytes(key, 1024, byteorder='little')
+    encrypt_key = sha256(encrypt_key).digest()
+
     while True:
         send_data = input('>>>')
-        sock.send(encrypt(send_data, key))
+        sock.send(encrypt(send_data, encrypt_key))
 
 
-def receive(sock, key):
+def receive(sock, key:int):
+    decrypt_key = int.to_bytes(key, 1024, byteorder='little')
+    decrypt_key = sha256(decrypt_key).digest()
+
     while True:
         recv_data = sock.recv(1024)
-        print('상대방 :', decrypt(recv_data, key))
+        print('상대방 :', decrypt(recv_data, decrypt_key))
 
 
 def login(sock: "Socket"):
     """
     TODO: 아이디와 패스워드 값을 전송하는 함수
-    :return:
+    :return: Nothing
     """
-    user_id = input()
-    password = input()
-    # socket 통신으로 id와 password를 전송
+    user_id = input().encode('utf-8')
+    password = input().encode('utf-8')
 
+    # compose packet
+    # | 4 bytes: sizeof(user_id)  | variable: user_id  | 
+    # | 4 bytes: sizeof(password) | variable: password |
+    ui_size: int = len(user_id)
+    pw_size: int = len(password)
+
+    packet = ui_size.to_bytes(4, byteorder='little') + user_id + pw_size.to_bytes(4, byteorder='little') + password
+
+    # socket 통신으로 id와 password를 전송
+    sock.send(packet)
     pass
 
 
@@ -67,29 +83,33 @@ def generate_key(key: int or None = None) -> int:
 
 def diffie_hellman(my_secret_key: int, target_public_key: int) -> bytes:
     """
-    TODO: [함수 설명]
+    get common diffie-hellman key from secret key and opponent's public key
+
     :param my_secret_key:
     :param target_public_key:
-    :return:
+    :return: common key from diffie-hellman exchange
     """
     p = 9723448991222331098330293371197519246446906995517093957384966642329511534161627658859950763542683697458467770974347360725590854862427735703874399411721649
     g = 2348329574892572380947382043
 
-    pass
+    # (a^b mod p)^c mod p = a^bc mod p
+    return pow(target_public_key, my_secret_key, p)
 
 
 def public_key(secret_key: int) -> int:
     """
     TODO: diffie hellman에서의 public key를 계산하여 반환하는 함수
-    :param secret_key:
-    :return:
+    :param secret_key: private key of "self"
+    :return: public key of "self"
     """
     p = 9723448991222331098330293371197519246446906995517093957384966642329511534161627658859950763542683697458467770974347360725590854862427735703874399411721649
     g = 2348329574892572380947382043
 
+    return pow(g, secret_key, p)
+
 
 def connect_socket():
-    port = 8081
+    port = 63000
 
     client_socket = socket(AF_INET, SOCK_STREAM)
     client_socket.connect(('127.0.0.1', port))
@@ -99,9 +119,12 @@ def connect_socket():
     print('로그인 완료')
 
     my_secret_key = generate_key()
+    
     # TODO: 자신의 public key를 전송해야 함
+    my_public_key = int.to_bytes(public_key(my_secret_key), 1024, byteorder='little')
+    client_socket.send(my_public_key)
 
-    target_public_key = int.from_bytes(client_socket.recv(1024), byteorder='little')  # little endian 으로 보내야 함
+    target_public_key = int.from_bytes(client_socket.recv(1024), byteorder='little') # little endian 으로 보내야 함
     key = diffie_hellman(my_secret_key, target_public_key)
     print('키 교환 완료')
 
