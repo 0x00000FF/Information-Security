@@ -31,8 +31,23 @@ def sign():
     공개키는 .export_key(format='PEM')을 이용해 PEM 형태로 저장
     :return: None
     """
-    # TODO:
+    
+    # load json
+    cert_json = load()
 
+    # generate private key
+    private_key = ECC.generate(curve='P-256')
+
+    # store public key
+    cert_json['public_key'] = private_key.public_key().export_key(format='PEM')
+
+    # generate signer and hash
+    signer      = DSS.new(private_key, 'fips-186-3')
+    hash_val    = SHA256.new((cert_json['student_id'] + cert_json['is_success'] + str(cert_json['week'])).encode())
+
+    # store sign and save
+    cert_json['sign'] = signer.sign(hash_val).hex()
+    save(cert_json)
 
 def verify() -> bool:
     """
@@ -44,31 +59,25 @@ def verify() -> bool:
     verifier.verify 함수를 이용할 때 true, false가 아닌 exception으로
     검증 여부가 판단되는 점을 주의
     try 문을 이용해 검증 성공 시 true, 실패시 false를 반환
-    :return:
+    :return: verify result
     """
-    # TODO:
 
+    try:    
+        # load json
+        cert_json = load()
+
+        # get public key and generate verifier
+        public_key = ECC.import_key(cert_json['public_key'])
+        verifier   = DSS.new(public_key, 'fips-186-3')
+
+        current_hash = SHA256.new((cert_json['student_id'] + cert_json['is_success'] + str(cert_json['week'])).encode())
+        verifier.verify(current_hash, bytes.fromhex(cert_json['sign']))
+
+        return True
+
+    except: # exception raises when verification failed
+        return False
+    
 
 if __name__ == '__main__':
-    pass
     sign()
-    # a = load()
-    # print(a)
-
-    # 키 생성
-    # private_key = ECC.generate(curve='P-256')
-    # public = private_key.public_key()
-    # 서명
-    # signer = DSS.new(private_key, 'fips-186-3')
-    # hash_val = SHA256.new('abc'.encode('utf-8'))
-    # signature = signer.sign(hash_val)
-    # print(signature)
-    # 검증
-    # verifier = DSS.new(public, 'fips-186-3')
-    # verifier.verify(SHA256.new('abc'.encode('utf-8')), bytes.fromhex(a['sign']))
-    # 키 및 서명 저장 관련
-    # print(public.export_key(format='PEM'))
-    # print(signature.hex())
-    # print(bytes.fromhex(signature.hex()))
-    # 키 가져오기
-    # public = ECC.import_key(a['public_key'])
