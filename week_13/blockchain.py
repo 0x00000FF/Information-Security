@@ -8,6 +8,8 @@ from Crypto.Hash.SHA256 import SHA256Hash
 from Crypto.PublicKey import ECC
 from Crypto.Signature import DSS
 
+import random, collections
+
 
 class Address:
     def __init__(self, pk: bytes):
@@ -155,7 +157,27 @@ class BlockChain:
         :param transaction_list:
         :return: nonce 값을 확인 후 올바른 nonce를 가진
         """
-        # TODO:
+
+        valid_transaction_list = []
+        
+        # deepcopy and sort nonce_dict
+        prev_nonce_dict = deepcopy(self.block_chain[-1].nonce_dict)
+        prev_nonce_dict = collections.OrderedDict(sorted(prev_nonce_dict.items()))
+
+        for transaction in transaction_list:
+            # add sender into nonce table
+            if transaction.sender not in prev_nonce_dict:
+                prev_nonce_dict[transaction.sender] = -1
+            
+            # check nonce validity
+            if transaction.nonce != prev_nonce_dict[transaction.sender] + 1:
+                continue
+
+            prev_nonce_dict[transaction.sender] += 1
+            valid_transaction_list.append(transaction)
+        
+        return valid_transaction_list, dict(prev_nonce_dict) 
+
 
     def update_state_tree(self, transaction_list: List[Transaction]) -> Dict[Address, int]:
         """
@@ -164,15 +186,33 @@ class BlockChain:
 
         트랜잭션의 송금액에 맞게 보유 금액을 조정 (차감)
 
-        :param transaction_list:
-        :return: state root 값
+        :param transaction_list: list of transactions
+        :return: state tree
         """
-        # TODO
+
+        last_state_tree = self.block_chain[-1].state_tree
+        new_state_tree  = {}
+
+        for transaction in transaction_list:
+            if transaction.sender not in new_state_tree:
+                new_state_tree[transaction.sender] = last_state_tree[transaction.sender]
+            
+            new_state_tree[transaction.sender]   -= transaction.value
+
+            if transaction.receiver not in new_state_tree:
+                if transaction.receiver not in last_state_tree:
+                    new_state_tree[transaction.receiver] = 0
+                else:
+                    new_state_tree[transaction.receiver] = last_state_tree[transaction.receiver]
+
+            new_state_tree[transaction.receiver] += transaction.value
+        
+        return new_state_tree
 
     def mining(self, transaction_list: List[Transaction]):
         """
-        TODO:
-        :return:
+        TODO: create block from transaction list (mining)
+        :return: nothing
         """
         # block_number: int  # number of block
         # parent_hash: bytes  # parent block's hash
@@ -189,12 +229,32 @@ class BlockChain:
             state_hash.update(bytes(address))
             state_hash.update(state_tree[address].to_bytes(256, byteorder='big'))
         state_root = state_hash.digest()
+        
         # TODO: 이후 블록 생성 구현
+        last_block = self.block_chain[-1]
+        lb_block_number = bytes(last_block.block_header.block_number)
+        lb_difficulty   = last_block.block_header.parent_hash
+        lb_merkle_root  = last_block.block_header.merkle_root
+        lb_state_root   = last_block.block_header.state_root
+        lb_nonce        = last_block.block_header.nonce.to_bytes(256, byteorder='big')
+        
+        last_block_hash = SHA256.new(lb_block_number + lb_difficulty + lb_merkle_root + lb_state_root + lb_nonce)
+        nonce = last_block.block_header.nonce + 1
+
+        block_header = BlockHeader(
+                     len(self.block_chain),
+                     last_block_hash.digest(), 
+                     merkle_root, 
+                     state_root, 
+                     last_block.block_header.difficulty, nonce)
+        block = Block(block_header, merkle_tree, state_tree, nonce_dict)
+
+        self.block_chain.append(block)
 
     def verify(self) -> bool:
         """
         생성한 블록을 검증하는 함수
-        :return:
+        :return: block validity (if valid true)
         """
         for i in range(1, len(self.block_chain)):
             if not self.verify_block(i):
@@ -205,8 +265,8 @@ class BlockChain:
         """
         생성된 블록을 검증하는 함수
 
-        :param index:
-        :return:
+        :param index: block index
+        :return: block validity (if valid true)
         """
         # Check merkle root (Merkle Tree를 직접 생성해 확인)
         merkle_tree = self.block_chain[index].merkle_tree
@@ -275,10 +335,10 @@ class BlockChain:
 def new_transaction_list(blockchain: BlockChain, _admin, _admin_sk):
     """
     새로운 임의 transaction 생성
-    :param blockchain:
-    :param _admin:
-    :param _admin_sk:
-    :return:
+    :param blockchain: chain 
+    :param _admin: administrator of the blockchain
+    :param _admin_sk: signkey of administrator
+    :return: transactions
     """
     addresses = []
     txs = []
