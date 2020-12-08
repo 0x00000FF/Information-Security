@@ -43,6 +43,17 @@ class Issuer:
 
         new_cert_chain = []
 
+        # import previous cert chain into new cert chain
+        for cert in self.cert_chain:
+            new_cert_chain.append(cert)
+
+        # sign given public key with secret
+        signer   = DSS.new(self.__secret, 'fips-186-3')
+        key_hash = SHA256.new(pub_key)
+        new_cert = Cert(self.public, pub_key, signer.sign(key_hash))
+
+        # append new cert to the new cert chain
+        new_cert_chain.append(new_cert)
         return new_cert_chain
 
 
@@ -67,6 +78,13 @@ class Holder:
         :return: cert_chain, sign(nonce)
         """
 
+        # generate signer from secret
+        signer     = DSS.new(self.__secret, 'fips-186-3')
+        nonce_hash = SHA256.new(nonce)
+
+        # return cert chain and nonce sign
+        return self.cert, signer.sign(nonce_hash)
+
 
 class Verifier:
     def __init__(self, root_pub: bytes):
@@ -82,9 +100,36 @@ class Verifier:
 
         cert chain 검증 결과 root ca로부터 연결된 신뢰 관계를 갖고 있을 경우 True 반환
 
-        :param cert_chain:
-        :param pub_key:
-        :param nonce:
-        :param sign:
-        :return:
+        :param cert_chain: given cert chain
+        :param pub_key: holder's public key
+        :param nonce: nonce from holder
+        :param sign: signed nonce
+        :return: verification result
         """
+
+        # add holder cert into cert chain
+        holder_pub  = ECC.import_key(pub_key)
+        holder_cert = Cert(holder_pub, nonce, sign)
+        cert_chain.append(holder_cert)
+
+        # get reversed chain to bottom-up verification
+        reversed_chain     = cert_chain[::-1]
+
+        for cert in reversed_chain:
+            try:
+                current_signer    = DSS.new(cert.issuer, 'fips-186-3')
+                current_plaintext = cert.public
+                current_sign      = cert.sign
+            
+                current_signer.verify(SHA256.new(current_plaintext), current_sign)
+            except:
+                return False
+
+        # check top cert issuer of chain is a root CA
+        top_issuer = reversed_chain[-1].issuer.export_key(format='DER')
+
+        # if not, validation failed
+        if top_issuer != self.root:
+            return False
+
+        return True
